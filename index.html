@@ -121,6 +121,11 @@
   .connbar{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin:0 0 16px}
   .connbar .cb-title{font:700 10px 'JetBrains Mono',monospace;letter-spacing:.22em;text-transform:uppercase;color:#9DB0CC}
   .connbar .cb{font:600 11px 'JetBrains Mono',monospace;padding:4px 10px;border-radius:999px;border:1px solid transparent}
+  .prep-grid{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 14px}
+  .prep-chip{font:600 12px 'JetBrains Mono',monospace;padding:5px 11px;border-radius:7px;border:1px solid transparent}
+  .prep-chip.ok{color:#BFE9D6;background:rgba(63,157,124,.14);border-color:rgba(63,157,124,.4)}
+  .prep-chip.auth{color:#F3D79A;background:rgba(201,145,47,.15);border-color:rgba(201,145,47,.45)}
+  .prep-chip.none{color:#9DB0CC;background:rgba(124,138,160,.1);border-color:rgba(124,138,160,.28)}
 
   /* Dependency layered board */
   .flowwrap{background:rgba(255,255,255,.025);border:1px solid var(--line);border-radius:14px;
@@ -282,6 +287,7 @@
 
   <nav class="tabs" role="tablist" aria-label="Views">
     <button class="tab" data-tab="stack" role="tab" aria-selected="true">Stack</button>
+    <button class="tab" data-tab="prep" role="tab" aria-selected="false">Session Prep</button>
     <button class="tab" data-tab="workflow" role="tab" aria-selected="false">Claude Workflow</button>
     <button class="tab" data-tab="devices" role="tab" aria-selected="false">Devices &amp; Sync</button>
   </nav>
@@ -463,6 +469,63 @@ brew install --cask claude-code</div>
     </div>
 
     <div class="rule-callout alt" style="margin-top:18px"><b>Which machine for what?</b> Any of them — pick by where you're sitting. The Windows desktop earns the long Code and Cowork sessions (more RAM, sustained runs); the laptops are for mobility; your phone is for remote-continuing a Code session. Keep them synced by the rules above and it genuinely doesn't matter which one you open.</div>
+  </section>
+
+  <section class="panel" data-panel="prep" hidden>
+    <p class="plead" style="margin-top:4px">Run this 60-second check <b>before</b> handing Claude a stack task. It tells Claude what it can already act on, what to authorize first, and the one rule that stops it improvising a workaround when the stack already has the tool. Verify in <b>Settings → Connectors</b> (Cowork/Claude desktop), or just ask Claude "what connectors are active right now?"</p>
+
+    <h2 class="psec">1 · Verify these are live <span class="conn-badge conn-ok" style="margin:0 0 0 6px">● connected</span></h2>
+    <div class="devcard">
+      <p>If a service shows here, <b>Claude can already act on it — don't set anything up, just use it.</b> Confirmed live this session:</p>
+      <div class="prep-grid">
+        <span class="prep-chip ok">Supabase</span><span class="prep-chip ok">Vercel</span><span class="prep-chip ok">Cloudflare</span>
+        <span class="prep-chip ok">PostHog</span><span class="prep-chip ok">Sentry</span><span class="prep-chip ok">Stripe</span>
+        <span class="prep-chip ok">Gmail</span><span class="prep-chip ok">Google Calendar</span><span class="prep-chip ok">Google Drive</span>
+        <span class="prep-chip ok">GoDaddy</span><span class="prep-chip ok">Asana</span><span class="prep-chip ok">Notion</span>
+      </div>
+      <p style="margin-bottom:0">Quick test: ask Claude to read something low-stakes (a Supabase row, the latest Vercel deploy, an unread Gmail label). If it answers, that connector is good for the session.</p>
+    </div>
+
+    <h2 class="psec">2 · Connect these before starting <span class="conn-badge conn-auth" style="margin:0 0 0 6px">▲ needs auth</span></h2>
+    <div class="devcard">
+      <p><b>GitHub.</b> There's no first-party GitHub connector in the directory, so Claude can't browse the repo over an API. Two working paths instead: (1) <b>deploy by pushing</b> — commit to <code>github.com/ChokePointMacro/Stack</code> and Vercel auto-deploys; (2) for in-session edits, <b>attach the repo folder</b> to Cowork or let Claude drive GitHub in the browser via the Chrome extension.</p>
+      <p><b>Slack.</b> Settings → Connectors → add Slack → authorize. Then Claude can read/post in channels.</p>
+      <p style="margin-bottom:0"><b>Reconnect drill:</b> anything showing "needs auth" (Google Calendar needed this on 06-25) — click <b>Reconnect</b> in Settings → Connectors and approve the scopes. Takes ~15 seconds each.</p>
+    </div>
+
+    <h2 class="psec">3 · No connector — use the API path <span class="conn-badge conn-none" style="margin:0 0 0 6px">○ no connector</span></h2>
+    <div class="devcard">
+      <div class="prep-grid">
+        <span class="prep-chip none">Alpaca</span><span class="prep-chip none">Polygon.io</span><span class="prep-chip none">TradingView</span>
+        <span class="prep-chip none">BetterStack</span><span class="prep-chip none">Upstash</span><span class="prep-chip none">Pinecone</span>
+        <span class="prep-chip none">Wave</span><span class="prep-chip none">Substack</span><span class="prep-chip none">Calendly</span>
+        <span class="prep-chip none">Instagram</span><span class="prep-chip none">X</span><span class="prep-chip none">Excel</span>
+      </div>
+      <p style="margin-bottom:0">These have no Claude connector. To let Claude use one, store its <b>API key as a Vercel/Supabase env var</b> and have Claude call the API, or drive the web UI through the Chrome extension. Don't wait for a one-click connector — there isn't one.</p>
+    </div>
+
+    <h2 class="psec">4 · Rules of engagement <span style="color:#9DB0CC;font:600 11px 'JetBrains Mono',monospace">— keep Claude on the rails</span></h2>
+    <div class="rule-callout alt">
+      <ul class="chk">
+        <li><b>Check the connected stack first.</b> Before proposing any workaround, confirm whether a connected tool already does it. If the stack has the tool, use the tool.</li>
+        <li><b>Deploys = git push.</b> Commit to <code>ChokePointMacro/Stack</code> → Vercel auto-deploys. Don't hand-roll CLI deploys or rebuild static copies.</li>
+        <li><b>Data lives in Supabase.</b> The board's source of truth is <code>public.services</code> (incl. <code>claude_conn</code>). Read/update there, not in hardcoded copies.</li>
+        <li><b>Secrets never go in chat.</b> Keys belong in Vercel env vars or the connector's own auth screen — Claude won't store or paste them.</li>
+        <li><b>One task, verified, then next.</b> Finish and confirm a change works before opening the next thread.</li>
+      </ul>
+    </div>
+
+    <h2 class="psec">5 · Pre-session checklist</h2>
+    <p class="plead">Thirty seconds at the start saves the tangents.</p>
+    <div class="devcard">
+      <ul class="chk">
+        <li>Open <b>Settings → Connectors</b>; confirm the section-1 services show <b>Connected</b></li>
+        <li><b>Reconnect</b> anything marked needs-auth</li>
+        <li>If the task touches code/deploy, confirm the <b>repo is reachable</b> (push access or folder attached)</li>
+        <li>State the goal plainly and add: <b>"use the connected stack; don't improvise"</b></li>
+        <li>Confirm <b>Supabase + Vercel</b> are green — the app's data and hosting</li>
+      </ul>
+    </div>
   </section>
 </div>
 <div class="save-flash" id="flash">saved</div>
