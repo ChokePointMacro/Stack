@@ -1,0 +1,924 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stack Control Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#0B2545; --navy-2:#13315C; --navy-3:#1B3E6F;
+    --rust:#8B3A1F; --rust-bright:#C04A28;
+    --gray:#444444; --light:#F2EFEA; --paper:#FBFAF7;
+    --line:rgba(242,239,234,.14);
+    --ok:#3F9D7C; --trial:#C9912F; --off:#7C8AA0;
+    --shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 10px 30px rgba(0,0,0,.28);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:'Inter',system-ui,sans-serif;
+    color:var(--light);
+    background:
+      radial-gradient(1200px 600px at 15% -10%, var(--navy-3), transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, var(--navy-2), transparent 55%),
+      var(--navy);
+    min-height:100vh; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 22px 80px}
+
+  /* Header */
+  .top{display:flex;flex-wrap:wrap;align-items:flex-end;gap:20px;justify-content:space-between;
+       border-bottom:1px solid var(--line);padding-bottom:20px}
+  .brandmark{display:flex;align-items:center;gap:12px}
+  .pin{width:14px;height:14px;border-radius:50%;background:var(--rust-bright);
+       box-shadow:0 0 0 4px rgba(192,74,40,.18), 0 0 14px rgba(192,74,40,.5);flex:none}
+  .eyebrow{font:600 11px/1 'JetBrains Mono',monospace;letter-spacing:.28em;
+           text-transform:uppercase;color:#9DB0CC}
+  .build{font:600 9.5px 'JetBrains Mono',monospace;letter-spacing:.08em;
+         color:#6E84A6;border:1px solid var(--line);border-radius:5px;padding:3px 7px;margin-left:2px}
+  h1{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:30px;margin:6px 0 0;
+     letter-spacing:-.01em}
+  .sub{color:#9DB0CC;font-size:13px;margin-top:6px;max-width:46ch}
+  .totals{display:flex;gap:26px;text-align:right}
+  .tnum{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:26px;line-height:1}
+  .tlabel{font:600 10px/1 'JetBrains Mono',monospace;letter-spacing:.18em;
+          text-transform:uppercase;color:#8095B3;margin-top:7px}
+  .tnum.annual{color:var(--rust-bright)}
+
+  /* Toolbar */
+  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:22px 0 6px}
+  .filters{display:flex;flex-wrap:wrap;gap:6px;margin-right:auto}
+  .chip{font:500 12px 'Inter';color:#B9C6DC;background:rgba(255,255,255,.04);
+        border:1px solid var(--line);padding:7px 13px;border-radius:999px;cursor:pointer;
+        transition:.15s}
+  .chip:hover{background:rgba(255,255,255,.08);color:#fff}
+  .chip[aria-pressed="true"]{background:var(--light);color:var(--navy);border-color:var(--light);font-weight:600}
+  .btn{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13px;cursor:pointer;
+       border-radius:9px;padding:10px 16px;border:1px solid transparent;transition:.15s;
+       display:inline-flex;align-items:center;gap:8px}
+  .btn.scan{background:var(--rust);color:#fff;box-shadow:0 6px 18px rgba(139,58,31,.4)}
+  .btn.scan:hover{background:var(--rust-bright)}
+  .btn.ghost{background:transparent;color:#C6D2E6;border-color:var(--line)}
+  .btn.ghost:hover{background:rgba(255,255,255,.06);color:#fff}
+  .btn:disabled{opacity:.55;cursor:wait}
+  .btn:focus-visible,.chip:focus-visible,input:focus-visible,select:focus-visible{
+       outline:2px solid var(--rust-bright);outline-offset:2px}
+
+  /* Cards grid */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-top:18px}
+  .card{background:var(--paper);color:var(--gray);border-radius:13px;padding:16px 16px 14px;
+        box-shadow:var(--shadow);position:relative;border-top:3px solid var(--navy-2);
+        display:flex;flex-direction:column;gap:10px}
+  .card.off{opacity:.62;filter:saturate(.5)}
+  .card-h{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+  .svc-name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:17px;color:var(--navy);
+            line-height:1.1}
+  .cat-tag{font:600 9px/1 'JetBrains Mono',monospace;letter-spacing:.12em;text-transform:uppercase;
+           color:var(--rust);margin-top:5px}
+  .fn{font-size:12.5px;line-height:1.45;color:#5a5a5a;min-height:34px}
+  .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .row.between{justify-content:space-between}
+  .status{display:inline-flex;align-items:center;gap:7px;font-family:'JetBrains Mono',monospace;
+          font-size:11px;font-weight:500;cursor:pointer;background:#fff;border:1px solid #e3ddd2;
+          padding:5px 9px;border-radius:7px;color:var(--gray)}
+  .dot{width:8px;height:8px;border-radius:50%;flex:none}
+  .dot.active{background:var(--ok);box-shadow:0 0 0 3px rgba(63,157,124,.18)}
+  .dot.trial{background:var(--trial);box-shadow:0 0 0 3px rgba(201,145,47,.18)}
+  .dot.inactive{background:var(--off)}
+  .spend-wrap{display:flex;align-items:baseline;gap:3px;font-family:'JetBrains Mono',monospace}
+  .cur{color:#9a9a9a;font-size:12px}
+  .spend{width:62px;font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;
+         color:var(--navy);background:transparent;border:none;border-bottom:1.5px dashed #cfc7b8;
+         padding:1px 2px;text-align:left}
+  .per{color:#9a9a9a;font-size:11px}
+  .tier{font-family:'JetBrains Mono',monospace;font-size:11px;color:#8a8a8a;background:#f3efe6;
+        border:1px solid #e8e1d3;padding:4px 8px;border-radius:6px;width:100%}
+  .tier:focus{background:#fff}
+  .deps{font-size:11px;color:#8a8a8a;line-height:1.5;border-top:1px dashed #e6dfd0;padding-top:9px}
+  .deps b{color:var(--rust);font-weight:600}
+  .dep-pill{display:inline-block;background:#eef1f6;color:var(--navy-2);border-radius:5px;
+            padding:1px 6px;margin:1px 2px;font-family:'JetBrains Mono',monospace;font-size:10.5px}
+  .link{font-size:11px;color:var(--navy-2);text-decoration:none;font-weight:600}
+  .link:hover{text-decoration:underline}
+  .del{position:absolute;top:10px;right:10px;background:none;border:none;color:#c9bfad;cursor:pointer;
+       font-size:15px;line-height:1;padding:2px 5px;border-radius:5px}
+  .del:hover{background:#f0e9da;color:var(--rust)}
+
+  /* Section heads */
+  .sec-head{display:flex;align-items:center;gap:12px;margin:38px 0 4px}
+  .sec-head h2{font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:600;margin:0;
+               letter-spacing:.02em;color:#E7EDF6}
+  .sec-head .rule{flex:1;height:1px;background:var(--line)}
+  .sec-head .num{font:700 11px 'JetBrains Mono',monospace;color:var(--rust-bright)}
+
+  /* Claude connection status */
+  .conn-badge{margin-top:9px;font:600 10.5px 'JetBrains Mono',monospace;letter-spacing:.03em;
+    display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:6px;border:1px solid transparent}
+  .conn-ok{color:#BFE9D6;background:rgba(63,157,124,.16);border-color:rgba(63,157,124,.42)}
+  .conn-auth{color:#F3D79A;background:rgba(201,145,47,.16);border-color:rgba(201,145,47,.48)}
+  .conn-none{color:#9DB0CC;background:rgba(124,138,160,.12);border-color:rgba(124,138,160,.3)}
+  .conn-na{color:#8595AE;background:rgba(124,138,160,.08);border-color:rgba(124,138,160,.22)}
+  .connbar{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin:0 0 16px}
+  .connbar .cb-title{font:700 10px 'JetBrains Mono',monospace;letter-spacing:.22em;text-transform:uppercase;color:#9DB0CC}
+  .connbar .cb{font:600 11px 'JetBrains Mono',monospace;padding:4px 10px;border-radius:999px;border:1px solid transparent}
+
+  /* Dependency layered board */
+  .flowwrap{background:rgba(255,255,255,.025);border:1px solid var(--line);border-radius:14px;
+            padding:8px 6px;margin-top:14px}
+  .flow-note{font:500 11px 'JetBrains Mono',monospace;color:#8095B3;text-align:center;padding:8px}
+  .layer{display:grid;grid-template-columns:160px 1fr;gap:14px;align-items:center;
+          padding:13px 14px;border-bottom:1px dashed var(--line)}
+  .layer:last-child{border-bottom:none}
+  .layer-l{font-family:'Space Grotesk',sans-serif}
+  .layer-l .ln{font:700 10px 'JetBrains Mono',monospace;color:var(--rust-bright);letter-spacing:.1em}
+  .layer-l .lt{font-size:13px;font-weight:600;color:#DCE5F2;margin-top:3px}
+  .layer-l .ld{font-size:11px;color:#7E92B2;margin-top:2px;line-height:1.4}
+  .nodes{display:flex;flex-wrap:wrap;gap:8px}
+  .node{background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:8px;
+        padding:8px 12px;font-size:12.5px;font-weight:500;color:#EAF0FA;display:flex;
+        align-items:center;gap:8px}
+  .node .nd{width:7px;height:7px;border-radius:50%}
+  .node.off{opacity:.4}
+
+  /* Scan panel */
+  .scanpanel{background:linear-gradient(180deg,rgba(192,74,40,.10),rgba(192,74,40,.02));
+             border:1px solid rgba(192,74,40,.3);border-radius:14px;padding:18px 20px;margin-top:14px}
+  .scan-empty{color:#9DB0CC;font-size:13px;line-height:1.6}
+  .scan-empty code{font-family:'JetBrains Mono',monospace;color:#E7B9A8;font-size:12px}
+  .scanout{font-size:13.5px;line-height:1.62;color:#EAF0FA}
+  .scanout h3{font-family:'Space Grotesk',sans-serif;font-size:14px;color:var(--rust-bright);
+              margin:18px 0 6px;letter-spacing:.01em}
+  .scanout h3:first-child{margin-top:0}
+  .scanout strong{color:#fff}
+  .scanout ul{margin:6px 0 6px;padding-left:20px}
+  .scanout li{margin:4px 0}
+  .scanout p{margin:8px 0}
+  .spinner{width:15px;height:15px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;
+           border-radius:50%;animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .err{color:#F0B5A4;font-size:13px;line-height:1.6}
+
+  .footnote{margin-top:34px;font-size:11px;color:#6E82A2;line-height:1.6;border-top:1px solid var(--line);
+            padding-top:16px}
+  .save-flash{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(20px);
+              background:var(--navy-2);color:#fff;border:1px solid var(--line);padding:8px 16px;
+              border-radius:999px;font:500 12px 'JetBrains Mono',monospace;opacity:0;transition:.3s;
+              pointer-events:none}
+  .save-flash.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  @media (max-width:640px){
+    .layer{grid-template-columns:1fr;gap:8px}
+    .totals{gap:18px}
+    h1{font-size:24px}
+  }
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+  .graphwrap{background:rgba(255,255,255,.025);border:1px solid var(--line);border-radius:14px;
+             padding:12px 12px 8px;margin-top:14px;overflow-x:auto}
+  #depsvg{min-width:880px;display:block;margin:0 auto}
+  #depsvg .ghead{fill:#7E92B2;font:600 9.5px 'JetBrains Mono',monospace;letter-spacing:.14em}
+  #depsvg .gnode{cursor:pointer}
+  #depsvg .gnode text{fill:#EAF0FA;font-size:11px;font-weight:500;pointer-events:none}
+  #depsvg .gnode rect{transition:opacity .15s,stroke .15s}
+  #depsvg .gedge{opacity:.42;transition:opacity .15s}
+  #depsvg .elabel{fill:#D7E2F2;font:500 10px 'JetBrains Mono',monospace;opacity:0;
+                  transition:opacity .15s;pointer-events:none;paint-order:stroke;
+                  stroke:#0B1B33;stroke-width:3px;stroke-linejoin:round}
+  #depsvg.focusing .gnode{opacity:.2}
+  #depsvg.focusing .gnode.hot{opacity:1}
+  #depsvg.focusing .gedge{opacity:.05}
+  #depsvg.focusing .gedge.active{opacity:1}
+  #depsvg .elabel.show{opacity:1}
+  #depsvg .gnode:focus{outline:none}
+  #depsvg .gnode:focus rect{stroke:#C04A28;stroke-width:2}
+  .graph-fallback{color:#9DB0CC;font-size:13px;padding:18px;text-align:center;line-height:1.6}
+  .ghint{color:#7E92B2;font:500 11px 'JetBrains Mono',monospace;margin-top:9px}
+  .legend{display:flex;flex-wrap:wrap;gap:22px;margin-top:10px;
+          font:500 12px 'JetBrains Mono',monospace;color:#9DB0CC}
+  .legend b{font-size:14px}
+
+  /* tabs */
+  .tabs{display:flex;gap:4px;margin:24px 0 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .tab{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13.5px;color:#9DB0CC;
+       background:none;border:none;border-bottom:2px solid transparent;padding:11px 15px 13px;
+       cursor:pointer;transition:.15s;margin-bottom:-1px}
+  .tab:hover{color:#fff}
+  .tab[aria-selected="true"]{color:#fff;border-bottom-color:var(--rust-bright)}
+  .tab:focus-visible{outline:2px solid var(--rust-bright);outline-offset:2px;border-radius:4px}
+  .panel[hidden]{display:none}
+  .panel{padding-top:20px}
+
+  /* workflow + devices content */
+  .psec{font-family:'Space Grotesk',sans-serif;font-size:18px;color:#E7EDF6;margin:30px 0 4px;font-weight:600}
+  .psec:first-child{margin-top:6px}
+  .plead{color:#9DB0CC;font-size:13.5px;line-height:1.62;max-width:74ch;margin:0 0 16px}
+  .surfaces{display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));gap:14px;margin-top:8px}
+  .surface{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:13px;
+           padding:16px;border-top:3px solid}
+  .surface .tag{font:600 9.5px 'JetBrains Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#8095B3}
+  .surface h3{font-family:'Space Grotesk',sans-serif;font-size:16px;margin:3px 0 6px;color:#EAF0FA}
+  .surface p{color:#A9B8CD;font-size:12.5px;line-height:1.55;margin:0 0 8px}
+  .surface ul{margin:0;padding-left:17px;color:#CBD7EA;font-size:12.5px;line-height:1.55}
+  .surface li{margin:4px 0}
+  .rule-callout{background:linear-gradient(180deg,rgba(192,74,40,.10),rgba(192,74,40,.02));
+                border:1px solid rgba(192,74,40,.3);border-radius:12px;padding:14px 18px;margin:18px 0;
+                color:#EAF0FA;font-size:13.5px;line-height:1.6}
+  .rule-callout b{color:var(--rust-bright)}
+  .rule-callout.alt{background:rgba(255,255,255,.03);border-color:var(--line)}
+  .rule-callout.alt b{color:#7FB98C}
+  .tasktable{width:100%;border-collapse:collapse;margin-top:6px;font-size:13px}
+  .tasktable th{text-align:left;color:#8095B3;font:600 9.5px 'JetBrains Mono',monospace;letter-spacing:.1em;
+                text-transform:uppercase;padding:9px 10px;border-bottom:1px solid var(--line)}
+  .tasktable td{padding:10px;border-bottom:1px solid rgba(242,239,234,.07);color:#D5DEEC;
+                vertical-align:top;line-height:1.45}
+  .tasktable tr:hover td{background:rgba(255,255,255,.02)}
+  .surf{font:700 11px 'JetBrains Mono',monospace;white-space:nowrap}
+  .surf.code{color:#6FB0D6}.surf.cowork{color:#7FB98C}.surf.chat{color:#E0975F}
+  .devcard{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:13px;
+           padding:17px 19px;margin-top:12px}
+  .devcard h3{font-family:'Space Grotesk',sans-serif;font-size:15px;color:#E7EDF6;margin:0 0 4px}
+  .devcard p{color:#C2CEDF;font-size:13px;line-height:1.62;margin:9px 0}
+  .devcard p:first-of-type{margin-top:2px}
+  .devcard b{color:#EAF0FA}
+  .codeblock{background:#08182E;border:1px solid var(--line);border-radius:9px;padding:12px 14px;margin:11px 0;
+             font:500 12px 'JetBrains Mono',monospace;color:#CFE0F2;overflow-x:auto;white-space:pre;line-height:1.6}
+  .codeblock .c{color:#6E89AB}
+  .gotcha{border-left:3px solid var(--rust-bright);padding:3px 0 3px 13px;margin:11px 0;
+          color:#E3C2B5;font-size:12.5px;line-height:1.55}
+  .gotcha b{color:#F0B79F}
+  .osrow{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 2px}
+  .ospill{font:600 10.5px 'JetBrains Mono',monospace;padding:4px 10px;border-radius:6px;
+          border:1px solid var(--line);color:#CBD7EA;background:rgba(255,255,255,.03)}
+  .chk{list-style:none;padding:0;margin:8px 0 0}
+  .chk li{padding:8px 0 8px 28px;position:relative;color:#D5DEEC;font-size:13px;line-height:1.5;
+          border-bottom:1px solid rgba(242,239,234,.06)}
+  .chk li:last-child{border-bottom:none}
+  .chk li::before{content:'';position:absolute;left:2px;top:9px;width:13px;height:13px;
+                  border:1.5px solid #5a6f8f;border-radius:4px}
+  .chk li b{color:#EAF0FA}
+  .chk code,.devcard code,.plead code{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#9FE0C0;
+          background:rgba(255,255,255,.05);padding:1px 5px;border-radius:4px}
+  .queue{background:linear-gradient(180deg,rgba(192,74,40,.12),rgba(192,74,40,.02));
+         border:1px solid rgba(192,74,40,.38);border-radius:13px;padding:16px 19px;margin:6px 0 4px}
+  .queue .qtag{font:700 9.5px 'JetBrains Mono',monospace;letter-spacing:.16em;color:var(--rust-bright);text-transform:uppercase}
+  .queue h3{font-family:'Space Grotesk',sans-serif;font-size:15.5px;color:#EAF0FA;margin:5px 0 4px}
+  .queue .when{font:600 11px 'JetBrains Mono',monospace;color:#E0975F;margin:0 0 8px}
+  .queue p{color:#C6D2E2;font-size:13px;line-height:1.6;margin:8px 0}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="brandmark"><span class="pin"></span><span class="eyebrow">Armed Capital · Ops</span><span class="build" id="buildtag"></span></div>
+      <h1>Stack Control Board</h1>
+      <p class="sub">Live inventory of every connected service — status, monthly burn, and how each piece depends on the others.</p>
+    </div>
+    <div class="totals">
+      <div><div class="tnum" id="monthly">$0</div><div class="tlabel">Active / month</div></div>
+      <div><div class="tnum annual" id="annual">$0</div><div class="tlabel">Annual run-rate</div></div>
+      <div><div class="tnum" id="connlive" style="color:var(--ok)">0</div><div class="tlabel">Claude can use now</div></div>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Views">
+    <button class="tab" data-tab="stack" role="tab" aria-selected="true">Stack</button>
+    <button class="tab" data-tab="workflow" role="tab" aria-selected="false">Claude Workflow</button>
+    <button class="tab" data-tab="devices" role="tab" aria-selected="false">Devices &amp; Sync</button>
+  </nav>
+
+  <section class="panel" data-panel="stack">
+  <div class="bar">
+    <div class="filters" id="filters"></div>
+    <button class="btn ghost" id="addBtn">+ Add service</button>
+    <button class="btn scan" id="scanBtn"><span id="scanLabel">⚡ Run AI scan</span></button>
+  </div>
+
+  <div class="connbar" id="connbar"></div>
+  <div class="grid" id="grid"></div>
+
+  <div class="sec-head"><span class="num">01</span><h2>Dependency map · by layer</h2><span class="rule"></span></div>
+  <div class="flowwrap" id="flow"></div>
+
+  <div class="sec-head"><span class="num">02</span><h2>Connection graph · what talks to what</h2><span class="rule"></span></div>
+  <div class="graphwrap" id="graph"><div class="graph-fallback">Loading graph…</div></div>
+  <div class="legend">
+    <span><b style="color:#5FA8C9">↔</b>&nbsp; two-way exchange</span>
+    <span><b style="color:#7E93B4">→</b>&nbsp; one-way (automated)</span>
+    <span><b style="color:#6E7E96">⇢</b>&nbsp; dashed = manual / occasional</span>
+  </div>
+  <div class="ghint">Hover or tap any service to trace just its connections · tap again to release.</div>
+
+  <div class="sec-head"><span class="num">03</span><h2>AI consolidation scan</h2><span class="rule"></span></div>
+  <div class="scanpanel">
+    <div id="scanResult" class="scan-empty">
+      Hit <strong>Run AI scan</strong> and Claude reads the current board — checks live pricing,
+      flags overlapping tools (e.g. duplicate auth or analytics), and suggests where to consolidate.
+      Results appear here. <span style="color:#7E92B2">Nothing is changed automatically; it only advises.</span>
+    </div>
+  </div>
+
+  <p class="footnote" id="foot">
+    Spend figures are editable estimates — click any number to match your actual plan. Status and spend persist on this device between sessions. The connection graph is the reference architecture; services you add manually show on the board and layer map but won't auto-wire new graph edges. <a href="#" id="resetBtn" style="color:#9DB0CC;text-decoration:underline">Reset board to latest</a> if anything looks out of date.
+  </p>
+  </section>
+
+  <section class="panel" data-panel="workflow" hidden>
+    <p class="plead" style="margin-top:4px">Three Claude surfaces, three jobs. The trick is sending each task to the one built for it instead of forcing everything through chat. Below: what each is for, a one-line rule, and a routing table for the work you actually do.</p>
+
+    <div class="surfaces">
+      <div class="surface" style="border-top-color:#E0975F">
+        <div class="tag">Think · Research · Draft</div>
+        <h3>Claude Chat</h3>
+        <p>This window. No repo or file-system access on its own — it reasons, researches, and drafts things you carry elsewhere.</p>
+        <ul>
+          <li>The analytical thesis behind a ChokePointMacro report</li>
+          <li>Architecture &amp; sequencing calls before you touch code</li>
+          <li>Prose, captions, outlines, reading lists</li>
+          <li>One-off SQL, regex, snippets, prompt design</li>
+        </ul>
+      </div>
+      <div class="surface" style="border-top-color:#7FB98C">
+        <div class="tag">Agent · Local files · Office</div>
+        <h3>Claude Cowork</h3>
+        <p>Desktop agent. Point it at a folder plus connected apps (Excel, PowerPoint, Chrome, Gmail, Drive) and it runs multi-step work.</p>
+        <ul>
+          <li>FP&amp;A models &amp; LLC workbooks in real <code>.xlsx</code></li>
+          <li>Investor / brand decks in PowerPoint</li>
+          <li>Running the PDF pipeline over a data folder</li>
+          <li>Email / calendar / Asana triage</li>
+        </ul>
+      </div>
+      <div class="surface" style="border-top-color:#6FB0D6">
+        <div class="tag">Agent · Your repo</div>
+        <h3>Claude Code</h3>
+        <p>Terminal / IDE agent working directly in a Git repo — reads files, runs commands, ships changes with a review diff.</p>
+        <ul>
+          <li>The Armed Capital app, auth, and Stripe wiring</li>
+          <li>Supabase schema &amp; migrations</li>
+          <li>Vercel config, the CI gate, cron jobs</li>
+          <li>Trading bot &amp; the ReportLab pipeline code</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="rule-callout"><b>Quick rule.</b> Does it touch the repo? → <b style="color:#6FB0D6">Code</b>. Does it act on local files, Office, or connected apps? → <b style="color:#7FB98C">Cowork</b>. Is it thinking, research, drafting, or a one-off? → <b style="color:#E0975F">Chat</b>.</div>
+
+    <h2 class="psec">Routing the work you actually do</h2>
+    <table class="tasktable">
+      <thead><tr><th>Task</th><th>Surface</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Armed Capital app — routes, auth, Stripe wiring</td><td><span class="surf code">CODE</span></td><td>Lives in the repo; needs to edit many files and run the dev server.</td></tr>
+        <tr><td>Supabase schema &amp; migrations</td><td><span class="surf code">CODE</span></td><td>SQL in-repo via the Supabase connector; review the diff before it lands.</td></tr>
+        <tr><td>Vercel config, CI gate, cron jobs</td><td><span class="surf code">CODE</span></td><td>Infra-as-code; Claude can run the CLI and commit.</td></tr>
+        <tr><td>Trading bot — Polygon data, TradingView webhooks</td><td><span class="surf code">CODE</span></td><td>Versioned code plus scheduled jobs.</td></tr>
+        <tr><td>ReportLab PDF pipeline — the code itself</td><td><span class="surf code">CODE</span></td><td>It's a Python codebase: refactor, fix the preview step, add report types.</td></tr>
+        <tr><td>Assembling a specific report from data</td><td><span class="surf cowork">COWORK</span></td><td>Point it at the data/assets folder; it runs the pipeline and lays out the output.</td></tr>
+        <tr><td>FP&amp;A models, LLC schedules, accountable-plan workbooks</td><td><span class="surf cowork">COWORK</span></td><td>Claude for Excel works the real formulas, not a copy.</td></tr>
+        <tr><td>Investor &amp; brand decks</td><td><span class="surf cowork">COWORK</span></td><td>Claude for PowerPoint builds and edits the slides directly.</td></tr>
+        <tr><td>Email / calendar / Asana triage</td><td><span class="surf cowork">COWORK</span></td><td>Agentic across your connectors in one pass.</td></tr>
+        <tr><td>Sourced web / supply-chain research saved to files</td><td><span class="surf cowork">COWORK</span></td><td>Chrome to gather, then writes findings to files or Drive.</td></tr>
+        <tr><td>ChokePointMacro thesis, analysis, prose</td><td><span class="surf chat">CHAT</span></td><td>Deep reasoning + web search; produce an artifact you refine.</td></tr>
+        <tr><td>Architecture, sequencing, debugging strategy</td><td><span class="surf chat">CHAT</span></td><td>Think it through before you open the repo.</td></tr>
+        <tr><td>Social captions, cat-zine copy, post ideas</td><td><span class="surf chat">CHAT</span></td><td>Fast drafting; paste into your scheduler.</td></tr>
+        <tr><td>One-off SQL / regex / snippets, prompt design</td><td><span class="surf chat">CHAT</span></td><td>One-shot answers you drop in elsewhere.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="rule-callout alt"><b>The handoff pattern.</b> Most real work is a relay: decide and research in Chat, then execute in Code or Cowork. Example — draft a rare-earth report's thesis and structure in Chat, render it through the pipeline in Code, then build the companion deck in Cowork. Matches your two-commitments-max discipline: one thinking surface, one doing surface, per project.</div>
+  </section>
+
+  <section class="panel" data-panel="devices" hidden>
+    <p class="plead" style="margin-top:4px">Goal: your Windows laptop, Mac laptop, and Windows desktop are interchangeable clients, not three separate setups. The rule that makes that true — nothing important lives only on one machine. Code goes to GitHub, assets go to Drive, secrets come from one source, and every machine pulls the same state.</p>
+
+    <div class="queue">
+      <div class="qtag">⌁ Claude Code queue</div>
+      <h3>Migrate auth: Clerk → Supabase Auth</h3>
+      <p class="when">Next session · on the Mac</p>
+      <p>Clerk is off the stack, so Supabase Auth is now the only auth layer. If any app code still calls Clerk, it has to move over before sign-in works. Open the repo in Claude Code and paste:</p>
+      <div class="codeblock">Migrate this Next.js app from Clerk to Supabase Auth.
+• Audit all Clerk usage: @clerk/nextjs, ClerkProvider, middleware,
+  auth() / currentUser(), &lt;SignIn&gt; / &lt;SignUp&gt;.
+• Replace with Supabase Auth via @supabase/ssr — server + client
+  helpers and middleware session refresh.
+• Rebuild sign-in / sign-up / sign-out UI and protected routes.
+• Update RLS policies that reference auth.uid(); migrate user IDs.
+• Remove Clerk packages + env vars; update .env.example.
+• Keep Clerk code until the Supabase flow is verified end-to-end,
+  then run the build + a manual auth smoke test before committing.</div>
+      <p style="margin-bottom:0">Two-commitments rule still applies — let this be the one build task you finish before opening the next.</p>
+    </div>
+
+    <h2 class="psec">1 · One source of truth</h2>
+    <div class="devcard">
+      <p><b>Code → GitHub.</b> Commit and push before you switch machines; pull when you sit down at the next one. Uncommitted work is the only thing that can't follow you, so don't let it pile up.</p>
+      <p><b>Assets → Google Drive.</b> Finished PDFs, decks, and research go to Google Drive, never a local Downloads folder. Supabase, Vercel, and Stripe are already cloud — same data on every machine by default.</p>
+      <p><b>Secrets → one source.</b> Never commit <code>.env</code>. Pull environment variables on each machine with <code>vercel env pull</code>, or keep keys in 1Password/Bitwarden so all three machines share one copy. PowerShell and WSL don't share env vars, so set them in the right place on each (<code>$PROFILE</code> vs <code>~/.bashrc</code>).</p>
+    </div>
+
+    <h2 class="psec">2 · The three Claude surfaces, per machine</h2>
+    <div class="devcard">
+      <h3>Claude Chat <span class="ospill" style="margin-left:6px">all 3 + phone</span></h3>
+      <p>Zero setup. History and Projects sync through your account everywhere. Put <b>ChokePointMacro</b> and <b>Armed Capital</b> in Projects so the context follows you between machines instead of being re-explained.</p>
+    </div>
+    <div class="devcard">
+      <h3>Claude Cowork</h3>
+      <div class="osrow"><span class="ospill">macOS ✓</span><span class="ospill">Windows x64 ✓</span><span class="ospill">ARM64 Win — partial</span></div>
+      <p>Install the desktop app on the Mac and both Windows machines (x64). Sign in once each, connect the <b>same</b> Connectors, and set per-folder instructions so you're not re-prompting. Because Cowork acts on a local folder, keep that working folder synced (Drive or the repo) so all three see identical files. Start in Ask mode until you trust a given workflow.</p>
+    </div>
+    <div class="devcard">
+      <h3>Claude Code</h3>
+      <div class="osrow"><span class="ospill">macOS ✓</span><span class="ospill">Windows native ✓</span><span class="ospill">WSL2 optional</span></div>
+      <p>Native install on each machine — no Node required for the app itself. Commit a <code>CLAUDE.md</code> at the repo root so your project instructions travel with the code to every machine. You can continue a desk session from your phone via remote control at <code>claude.ai/code</code>.</p>
+      <div class="codeblock"><span class="c"># Windows (PowerShell) — laptop + desktop</span>
+irm https://claude.ai/install.ps1 | iex
+winget install Git.Git          <span class="c"># gives Claude Code the Bash tool</span>
+
+<span class="c"># macOS</span>
+brew install --cask claude-code</div>
+      <div class="gotcha"><b>Windows tip:</b> native is fine for the Next.js app. If the Python pipeline or bash scripts misbehave, run Claude Code inside <b>WSL2</b> on that machine for full Unix parity — just don't expect PowerShell and WSL to share your env vars.</div>
+    </div>
+
+    <h2 class="psec">3 · Environment parity — the Windows ↔ Mac friction</h2>
+    <div class="devcard">
+      <p><b>Node — pin one version.</b> Use nvm on Mac and nvm-windows or fnm on Windows, then add a <code>.nvmrc</code> to the repo so <code>nvm use</code> picks the same version on every machine.</p>
+      <p><b>Python pipeline — reproduce it.</b> A <code>venv</code> + <code>requirements.txt</code> covers the libraries, but your <code>pdf2image</code> preview step needs <b>poppler</b>: <code>brew install poppler</code> on Mac vs. installing the poppler binaries and adding them to PATH on Windows. This is the single most likely thing to break the pipeline across OSes.</p>
+      <p><b>Line endings.</b> Add a <code>.gitattributes</code> with <code>* text=auto</code> so Windows CRLF and Mac LF stop fighting and producing noisy diffs.</p>
+      <p><b>CLIs everywhere.</b> Install GitHub CLI, Vercel CLI, and Supabase CLI on each machine — <code>winget</code> on Windows, <code>brew</code> on Mac. Avoid hardcoded OS paths in scripts.</p>
+      <div class="gotcha"><b>Three repeat offenders:</b> poppler missing on Windows, CRLF/LF churn, and env vars not crossing the PowerShell↔WSL boundary. Fix these once per machine and the rest is interchangeable.</div>
+    </div>
+
+    <h2 class="psec">4 · Per-machine setup checklist</h2>
+    <p class="plead">Run the same list on each of the three machines once; after that, day-to-day is just clone-pull-push.</p>
+    <div class="devcard">
+      <ul class="chk">
+        <li>Install <b>Git</b>, a <b>Node version manager</b>, and <b>Python</b></li>
+        <li><code>git clone</code> the repo → <code>nvm use</code> → <code>npm install</code></li>
+        <li><code>vercel env pull</code> (or pull keys from your password manager)</li>
+        <li><code>python -m venv</code> → <code>pip install -r requirements.txt</code> → install <b>poppler</b></li>
+        <li>Install <b>Claude Code</b> (native) and sign in</li>
+        <li>Open <b>Cowork</b>, sign in, connect the same Connectors, set folder instructions</li>
+        <li>Sign into <b>Chat</b>; confirm your Projects appear</li>
+        <li>Run <code>claude doctor</code> to verify the install</li>
+      </ul>
+    </div>
+
+    <div class="rule-callout alt" style="margin-top:18px"><b>Which machine for what?</b> Any of them — pick by where you're sitting. The Windows desktop earns the long Code and Cowork sessions (more RAM, sustained runs); the laptops are for mobility; your phone is for remote-continuing a Code session. Keep them synced by the rules above and it genuinely doesn't matter which one you open.</div>
+  </section>
+</div>
+<div class="save-flash" id="flash">saved</div>
+
+<script>
+const NAV="#13315C", RUST="#8B3A1F";
+const CATS = ["Infra","Dev","Analytics","Comms","Distribution","AI","Markets","Finance","Payments","Ops"];
+
+const SEED = [
+  {id:"github",   name:"GitHub",    cat:"Infra",        fn:"Source of truth for all repo code, version history, CI triggers.", status:"active", spend:0,  tier:"Free", deps:[], url:"https://github.com"},
+  {id:"claude",   name:"Claude",    cat:"AI",           fn:"Writes & refactors code (Claude Code), drafts research, powers in-app AI.", status:"active", spend:100,tier:"Max plan", deps:[], url:"https://claude.ai"},
+  {id:"vercel",   name:"Vercel",    cat:"Infra",        fn:"Builds & hosts the Next.js app; serverless functions and edge.", status:"active", spend:20, tier:"Pro", deps:["github","supabase"], url:"https://vercel.com"},
+  {id:"supabase", name:"Supabase",  cat:"Infra",        fn:"Postgres database, row-level security, storage, realtime. Also ships auth.", status:"active", spend:25, tier:"Pro", deps:[], url:"https://supabase.com"},
+  {id:"cloudflare",name:"Cloudflare",cat:"Infra",       fn:"DNS, DDoS protection, WAF, CDN sitting in front of the app.", status:"active", spend:0,  tier:"Free", deps:["vercel"], url:"https://cloudflare.com"},
+  {id:"posthog",  name:"PostHog",   cat:"Analytics",    fn:"Product analytics, session replay, feature flags, event capture.", status:"active", spend:0,  tier:"Free (1M events)", deps:["vercel"], url:"https://posthog.com"},
+  {id:"slack",    name:"Slack",     cat:"Comms",        fn:"Team / solo comms and a sink for build & alert webhooks.", status:"active", spend:0,  tier:"Free", deps:["posthog","vercel"], url:"https://slack.com"},
+  {id:"x",        name:"X",         cat:"Distribution", fn:"Primary ChokePointMacro distribution + real-time discovery.", status:"active", spend:8,  tier:"Premium", deps:[], url:"https://x.com"},
+  {id:"instagram",name:"Instagram", cat:"Distribution", fn:"Visual distribution channel — cat zine + chokepoint graphics.", status:"active", spend:0,  tier:"Free", deps:[], url:"https://instagram.com"},
+  {id:"substack", name:"Substack",  cat:"Distribution", fn:"Newsletter + paid subscriptions for long-form research.", status:"active", spend:0,  tier:"Free (10% of paid)", deps:[], url:"https://substack.com"},
+  {id:"vscode",   name:"VS Code",   cat:"Dev",          fn:"Editor where code is written; hosts Claude Code.", status:"active", spend:0,  tier:"Free", deps:[], url:"https://code.visualstudio.com"},
+  {id:"upstash",  name:"Upstash",   cat:"Infra",        fn:"Serverless Redis — rate limiting, caching, job queues (QStash).", status:"active", spend:0,  tier:"Free tier", deps:["vercel"], url:"https://upstash.com"},
+  {id:"pinecone", name:"Pinecone",  cat:"Infra",        fn:"Vector database for embeddings / retrieval (RAG).", status:"active", spend:0,  tier:"Starter", deps:["vercel"], url:"https://pinecone.io"},
+  {id:"sentry",   name:"Sentry",    cat:"Analytics",    fn:"Error & performance monitoring for the deployed app.", status:"active", spend:0,  tier:"Developer", deps:["vercel"], url:"https://sentry.io"},
+  {id:"gmail",    name:"Gmail",     cat:"Comms",        fn:"Business email; receives system, alert & inbound mail.", status:"active", spend:0,  tier:"Free / Workspace", deps:[], url:"https://mail.google.com"},
+  {id:"godaddy",  name:"GoDaddy",   cat:"Infra",        fn:"Domain registrar; delegates DNS to Cloudflare.", status:"active", spend:2,  tier:"~$20/yr per domain", deps:[], url:"https://godaddy.com"},
+  {id:"tradingview",name:"TradingView",cat:"Markets",   fn:"Market charts & alerts; can webhook into a trading bot.", status:"active", spend:0,  tier:"Free / Plus", deps:[], url:"https://tradingview.com"},
+  {id:"excel",    name:"Excel",     cat:"Finance",      fn:"FP&A models, Armed Capital financials, scenario work.", status:"active", spend:0,  tier:"M365", deps:[], url:"https://microsoft.com/excel"},
+  {id:"stripe",   name:"Stripe",    cat:"Payments",     fn:"Checkout, subscriptions, billing; webhooks back to the app.", status:"active", spend:0,  tier:"Pay-as-you-go", deps:["vercel"], url:"https://stripe.com"},
+  {id:"wave",     name:"Wave",      cat:"Finance",      fn:"Free accounting / bookkeeping; invoices, expenses, reports.", status:"active", spend:0,  tier:"Free", deps:[], url:"https://waveapps.com"},
+  {id:"polygon",  name:"Polygon.io",cat:"Markets",      fn:"Programmatic market-data API — prices & history for the bot.", status:"active", spend:0,  tier:"Free / paid", deps:[], url:"https://polygon.io"},
+  {id:"vercelcron",name:"Vercel Cron",cat:"Infra",      fn:"Scheduled jobs that trigger app routes (pipeline, bot).", status:"active", spend:0,  tier:"Incl. with Vercel", deps:["vercel"], url:"https://vercel.com/docs/cron-jobs"},
+  {id:"asana",    name:"Asana",     cat:"Ops",          fn:"Project & task tracking across builds and content.", status:"active", spend:0,  tier:"Free / Starter", deps:[], url:"https://asana.com"},
+  {id:"ci",       name:"CI Gate",   cat:"Dev",          fn:"GitHub Actions — runs lint/tests on push before deploy.", status:"active", spend:0,  tier:"Free minutes", deps:["github"], url:"https://github.com/features/actions"},
+  {id:"alpaca",   name:"Alpaca",    cat:"Markets",      fn:"Brokerage API — market data + order execution for the trading bot.", status:"active", spend:0,  tier:"Commission-free", deps:["vercel"], url:"https://alpaca.markets"},
+  {id:"betterstack",name:"BetterStack",cat:"Analytics", fn:"Uptime / synthetic monitoring; pings endpoints, alerts on downtime.", status:"active", spend:0,  tier:"Free tier", deps:[], url:"https://betterstack.com"},
+  {id:"claudedesign",name:"Claude Design",cat:"AI",     fn:"Visual asset generation — ChokePointMacro graphics and cat zine.", status:"active", spend:0,  tier:"Incl. with Claude", deps:[], url:"https://claude.ai"},
+  {id:"calendly", name:"Calendly",  cat:"Ops",          fn:"Client booking / scheduling front-end for Armed Capital.", status:"active", spend:0,  tier:"Free / paid", deps:[], url:"https://calendly.com"},
+];
+
+const LAYERS = [
+  {n:"L1", t:"Author & Dev", d:"Where code & content originate", ids:["claude","vscode","github","claudedesign"]},
+  {n:"L2", t:"Build, Deploy & Schedule", d:"Gates, ships, and times the app", ids:["ci","vercel","vercelcron"]},
+  {n:"L3", t:"Runtime Services", d:"What the live app calls", ids:["supabase","upstash","pinecone"]},
+  {n:"L4", t:"Edge & DNS", d:"Domain, routing, traffic protection", ids:["godaddy","cloudflare"]},
+  {n:"L5", t:"Observe & Comms", d:"Watches behavior, monitors uptime, sends alerts", ids:["posthog","sentry","betterstack","slack","gmail"]},
+  {n:"L6", t:"Distribution", d:"Where the audience receives output", ids:["x","instagram","substack"]},
+  {n:"L7", t:"Markets & Data", d:"Charts, data, and trade execution", ids:["tradingview","polygon","alpaca"]},
+  {n:"L8", t:"Money & Books", d:"Revenue in, recorded and modeled", ids:["stripe","wave","excel"]},
+  {n:"L9", t:"Planning & Booking", d:"Tracks work and client time", ids:["asana","calendly"]},
+];
+
+// ---- Claude MCP connection status (verified live 2026-06-26) ----
+// connected = live this session · needs_auth = connector exists, authorize before a session
+// na = Claude itself · anything not listed defaults to 'none' (no Claude connector available)
+const CONN = {
+  asana:'connected', sentry:'connected', stripe:'connected', supabase:'connected',
+  cloudflare:'connected', vercel:'connected', vercelcron:'connected', posthog:'connected',
+  gmail:'connected', godaddy:'connected',
+  github:'needs_auth', slack:'needs_auth', ci:'needs_auth',
+  claude:'na', claudedesign:'na'
+};
+const CONN_META = {
+  connected:  {cls:'conn-ok',   ic:'●', label:'Claude: connected'},
+  needs_auth: {cls:'conn-auth', ic:'▲', label:'Claude: needs auth'},
+  none:       {cls:'conn-none', ic:'○', label:'No Claude connector'},
+  na:         {cls:'conn-na',   ic:'–', label:'Claude: n/a'}
+};
+const connOf = id => CONN[id] || 'none';
+function connBadge(id){ const m=CONN_META[connOf(id)]; return `<div class="conn-badge ${m.cls}" title="${m.label}">${m.ic} ${m.label}</div>`; }
+function renderConn(){
+  const counts={connected:0,needs_auth:0,none:0,na:0};
+  data.forEach(s=>{ const k=connOf(s.id); counts[k]=(counts[k]||0)+1; });
+  const live=document.getElementById('connlive'); if(live) live.textContent=counts.connected;
+  const bar=document.getElementById('connbar');
+  if(bar){
+    bar.innerHTML = `<span class="cb-title">Claude access</span>` +
+      [['connected','usable now'],['needs_auth','auth before a session'],['none','no connector'],['na','n/a']]
+      .map(([k,lbl])=>`<span class="cb ${CONN_META[k].cls}">${CONN_META[k].ic} ${counts[k]||0} ${lbl}</span>`).join('');
+  }
+}
+
+const KEY="acm_stack_v1";
+const REMOVED=['clerk','resend'];
+let data=[], filter="All", canPersist=false;
+
+async function load(){
+  let stored=[];
+  try{
+    const r = await window.storage.get(KEY);
+    if(r && r.value){ stored = JSON.parse(r.value) || []; }
+    canPersist = true;
+  }catch(e){
+    // no stored value yet, or storage unavailable
+    canPersist = (typeof window.storage !== "undefined" && !!window.storage.set);
+  }
+  if(!Array.isArray(stored)) stored = [];
+  const byId = {}; stored.forEach(s=>{ if(s && s.id) byId[s.id]=s; });
+  // Rebuild from SEED so structure (name, category, function, deps, url) ALWAYS
+  // reflects the latest version, while preserving the user's editable fields.
+  data = SEED.map(seed=>{
+    const u = byId[seed.id];
+    return u ? {...structuredClone(seed),
+                status: u.status ?? seed.status,
+                spend:  (u.spend  ?? seed.spend),
+                tier:   u.tier   ?? seed.tier} : structuredClone(seed);
+  });
+  // Keep any custom services the user added that aren't in SEED (and weren't removed).
+  stored.forEach(s=>{ if(s && s.id && !SEED.some(x=>x.id===s.id) && !REMOVED.includes(s.id)) data.push(s); });
+}
+async function save(){
+  render();
+  if(!canPersist) return;
+  try{ await window.storage.set(KEY, JSON.stringify(data)); flash(); }
+  catch(e){ /* keep working in-memory */ }
+}
+function flash(){const f=document.getElementById('flash');f.classList.add('show');
+  clearTimeout(flash._t);flash._t=setTimeout(()=>f.classList.remove('show'),900);}
+
+const nameOf = id => (data.find(s=>s.id===id)||{}).name || id;
+const isOn = s => s.status!=="inactive";
+
+function totals(){
+  const m = data.filter(isOn).reduce((a,s)=>a+(+s.spend||0),0);
+  document.getElementById('monthly').textContent = "$"+m.toLocaleString();
+  document.getElementById('annual').textContent  = "$"+(m*12).toLocaleString();
+  const bt=document.getElementById('buildtag');
+  if(bt) bt.textContent = data.length+" svc · build 06-25";
+}
+
+function statusMeta(st){
+  if(st==="active") return ["active","ACTIVE"];
+  if(st==="trial")  return ["trial","TRIAL"];
+  return ["inactive","PAUSED"];
+}
+function cycleStatus(st){return st==="active"?"trial":st==="trial"?"inactive":"active";}
+
+function render(){
+  // filters
+  const fc=document.getElementById('filters');
+  const all=["All",...CATS];
+  fc.innerHTML=all.map(c=>`<button class="chip" data-f="${c}" aria-pressed="${filter===c}">${c}</button>`).join("");
+  fc.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{filter=b.dataset.f;render();});
+
+  // cards
+  const grid=document.getElementById('grid');
+  const shown = data.filter(s=>filter==="All"||s.cat===filter);
+  grid.innerHTML = shown.map(s=>{
+    const [dc,dl]=statusMeta(s.status);
+    const deps = s.deps.length
+      ? `<div class="deps"><b>needs</b> ${s.deps.map(d=>`<span class="dep-pill">${nameOf(d)}</span>`).join("")}</div>`
+      : `<div class="deps"><b>standalone</b> — nothing else depends on it to run</div>`;
+    return `<div class="card ${isOn(s)?'':'off'}" data-id="${s.id}">
+      <button class="del" title="Remove" data-del="${s.id}">×</button>
+      <div class="card-h"><div>
+        <div class="svc-name">${s.name}</div>
+        <div class="cat-tag">${s.cat}</div>
+      </div></div>
+      <div class="fn">${s.fn}</div>
+      <div class="row between">
+        <button class="status" data-st="${s.id}"><span class="dot ${dc}"></span>${dl}</button>
+        <div class="spend-wrap"><span class="cur">$</span><input class="spend" type="number" min="0" step="1" value="${s.spend}" data-sp="${s.id}"><span class="per">/mo</span></div>
+      </div>
+      ${connBadge(s.id)}
+      <input class="tier" value="${s.tier||''}" data-tier="${s.id}" aria-label="plan tier for ${s.name}">
+      ${deps}
+      <a class="link" href="${s.url}" target="_blank" rel="noopener">open ↗</a>
+    </div>`;
+  }).join("");
+
+  grid.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{
+    const s=data.find(x=>x.id===b.dataset.st); s.status=cycleStatus(s.status); save();});
+  grid.querySelectorAll('[data-sp]').forEach(i=>i.onchange=()=>{
+    const s=data.find(x=>x.id===i.dataset.sp); s.spend=Math.max(0,+i.value||0); save();});
+  grid.querySelectorAll('[data-tier]').forEach(i=>i.onchange=()=>{
+    const s=data.find(x=>x.id===i.dataset.tier); s.tier=i.value; save();});
+  grid.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{
+    if(confirm('Remove '+nameOf(b.dataset.del)+' from the board?')){
+      data=data.filter(x=>x.id!==b.dataset.del); save();}});
+
+  renderFlow();
+  totals();
+  renderConn();
+}
+
+function renderFlow(){
+  const f=document.getElementById('flow');
+  f.innerHTML = `<div class="flow-note">build &amp; data flow ↓ — each layer relies on the layer above it</div>` +
+    LAYERS.map(L=>{
+      const nodes=L.ids.map(id=>{
+        const s=data.find(x=>x.id===id); if(!s) return "";
+        const [dc]=statusMeta(s.status);
+        return `<span class="node ${isOn(s)?'':'off'}"><span class="nd dot ${dc}" style="box-shadow:none"></span>${s.name}</span>`;
+      }).join("");
+      return `<div class="layer">
+        <div class="layer-l"><div class="ln">${L.n}</div><div class="lt">${L.t}</div><div class="ld">${L.d}</div></div>
+        <div class="nodes">${nodes||'<span class="ld" style="color:#7E92B2">—</span>'}</div>
+      </div>`;
+    }).join("");
+}
+
+// ---- Connection graph: directional, one-way vs two-way ----
+const GROUPS=[
+ {key:'DEV',  title:'① Author & Dev',     cls:'dev',   ids:['claude','vscode','github','claudedesign']},
+ {key:'BUILD',title:'② Build, Deploy & Schedule', cls:'hub', ids:['ci','vercel','vercelcron']},
+ {key:'RUN',  title:'③ Runtime Services', cls:'infra', ids:['supabase','upstash','pinecone']},
+ {key:'EDGE', title:'④ Edge & DNS',       cls:'edge',  ids:['godaddy','cloudflare']},
+ {key:'OBS',  title:'⑤ Observe & Comms',  cls:'obs',   ids:['posthog','sentry','betterstack','slack','gmail']},
+ {key:'DIST', title:'⑥ Distribution',     cls:'dist',  ids:['x','instagram','substack']},
+ {key:'MKT',  title:'⑦ Markets & Data',   cls:'mkt',   ids:['tradingview','polygon','alpaca']},
+ {key:'MONEY',title:'⑧ Money & Books',    cls:'money', ids:['stripe','wave','excel']},
+ {key:'PLAN', title:'⑨ Planning & Booking',cls:'plan', ids:['asana','calendly']},
+];
+// [from, to, type, label]   type: 'two' = ↔, 'one' = →, 'man' = dashed manual
+const EDGES=[
+ ['claude','vscode','two','code'],
+ ['vscode','github','two','push/pull'],
+ ['github','ci','one','on push'],
+ ['ci','vercel','one','deploy if green'],
+ ['vercelcron','vercel','one','schedule'],
+ ['claudedesign','vercel','man','assets'],
+ ['godaddy','cloudflare','one','DNS'],
+ ['cloudflare','vercel','two','proxy'],
+ ['vercel','supabase','two','data'],
+ ['vercel','upstash','two','cache'],
+ ['vercel','pinecone','two','vectors'],
+ ['vercel','posthog','two','events/flags'],
+ ['vercel','claude','two','AI API'],
+ ['vercel','stripe','two','billing'],
+ ['vercel','alpaca','two','orders/fills'],
+ ['vercel','sentry','one','errors'],
+ ['betterstack','vercel','one','monitors'],
+ ['stripe','wave','man','sync'],
+ ['sentry','slack','one','alerts'],
+ ['sentry','gmail','one','alerts'],
+ ['betterstack','slack','one','alerts'],
+ ['posthog','slack','one','reports'],
+ ['asana','slack','one','updates'],
+ ['calendly','gmail','one','bookings'],
+ ['tradingview','vercel','one','alerts'],
+ ['polygon','vercel','one','market data'],
+ ['vercel','x','one','publish'],
+ ['vercel','instagram','one','publish'],
+ ['vercel','substack','one','publish'],
+ ['supabase','excel','man','export'],
+ ['posthog','excel','man','export'],
+];
+const GLABEL={vercel:'Vercel · the app'};
+const NODECLS={claude:'ai', claudedesign:'ai', ci:'dev', vercelcron:'infra'};
+// node color by group / class
+const CLSCOLOR={ai:'#C04A28',dev:'#1B3E6F',hub:'#0B2545',infra:'#13315C',edge:'#2F4858',
+                obs:'#3A3350',dist:'#6B4A1A',mkt:'#4A4A4A',money:'#2E5339',plan:'#4A2F45'};
+const nodeColor=id=>{ if(NODECLS[id]) return CLSCOLOR[NODECLS[id]];
+  const g=GROUPS.find(G=>G.ids.includes(id)); return CLSCOLOR[g?g.cls:'infra']; };
+
+// columns read left → right: authored → built → fronted → served → output
+const COLS=[
+  {t:'Author',           ids:['claude','vscode','claudedesign']},
+  {t:'Source · CI',      ids:['github','ci','vercelcron']},
+  {t:'Edge',             ids:['godaddy','cloudflare']},
+  {t:'App',              ids:['vercel']},
+  {t:'Runtime services', ids:['supabase','upstash','pinecone','posthog','sentry','betterstack','stripe','polygon','tradingview','alpaca']},
+  {t:'Outputs · Comms',  ids:['x','instagram','substack','slack','gmail','wave','excel','asana','calendly']},
+];
+const ECOLOR={two:'#5FA8C9',one:'#7E93B4',man:'#6E7E96'};
+
+function renderGraph(){
+  const host=document.getElementById('graph');
+  const NW=108,NH=30,GAPY=13,TOP=46,BOT=24,COLX=[78,236,394,556,742,936],W=1014;
+  let maxH=0; COLS.forEach(c=>{const h=c.ids.length*NH+(c.ids.length-1)*GAPY; if(h>maxH)maxH=h;});
+  const H=TOP+maxH+BOT;
+  const pos={};
+  COLS.forEach((c,ci)=>{
+    const colH=c.ids.length*NH+(c.ids.length-1)*GAPY;
+    let y=TOP+(maxH-colH)/2;
+    c.ids.forEach(id=>{
+      const hub=id==='vercel', w=hub?122:NW, h=hub?42:NH;
+      pos[id]={x:COLX[ci],y:y+h/2,w,h}; y+=h+GAPY;
+    });
+  });
+  const anc=(p,s)=> s==='r'?[p.x+p.w/2,p.y] : s==='l'?[p.x-p.w/2,p.y] : s==='t'?[p.x,p.y-p.h/2] : [p.x,p.y+p.h/2];
+  function pathOf(a,b){
+    const A=pos[a],B=pos[b]; if(!A||!B) return null;
+    if(Math.abs(A.x-B.x)<1){ // same column → side curve
+      const up=A.y<B.y?A:B, dn=A.y<B.y?B:A;
+      const [x1,y1]=anc(up,'b'), [x2,y2]=anc(dn,'t');
+      return {d:`M${x1},${y1} C${x1+30},${y1+16} ${x2+30},${y2-16} ${x2},${y2}`, mid:[x1+24,(y1+y2)/2]};
+    }
+    const ltr=B.x>A.x;
+    const [x1,y1]=anc(A,ltr?'r':'l'), [x2,y2]=anc(B,ltr?'l':'r');
+    const dx=(x2-x1)*0.42;
+    return {d:`M${x1},${y1} C${x1+dx},${y1} ${x2-dx},${y2} ${x2},${y2}`, mid:[(x1+x2)/2,(y1+y2)/2-5]};
+  }
+  let eS='',lS='';
+  EDGES.forEach(([a,b,t,l])=>{
+    const p=pathOf(a,b); if(!p) return;
+    const dash=t==='man'?' stroke-dasharray="5 4"':'';
+    const ms=t==='two'?' marker-start="url(#aTwo)"':'';
+    const me=` marker-end="url(#a${t==='two'?'Two':t==='man'?'Man':'One'})"`;
+    const w=t==='two'?2:t==='man'?1.4:1.6;
+    eS+=`<path class="gedge" data-a="${a}" data-b="${b}" d="${p.d}" fill="none" stroke="${ECOLOR[t]}" stroke-width="${w}"${dash}${ms}${me}></path>`;
+    lS+=`<text class="elabel" data-a="${a}" data-b="${b}" x="${p.mid[0]}" y="${p.mid[1]}" text-anchor="middle">${l}</text>`;
+  });
+  let nS='';
+  COLS.forEach(c=>c.ids.forEach(id=>{
+    const p=pos[id], hub=id==='vercel';
+    const label=hub?'Vercel':nameOf(id);
+    nS+=`<g class="gnode${hub?' hub':''}" data-id="${id}" tabindex="0" role="button" aria-label="${label}">
+      <rect x="${p.x-p.w/2}" y="${p.y-p.h/2}" width="${p.w}" height="${p.h}" rx="7"
+        fill="${nodeColor(id)}" stroke="${hub?'#C04A28':'rgba(255,255,255,.22)'}" stroke-width="${hub?2:1}"></rect>
+      <text x="${p.x}" y="${p.y+4}" text-anchor="middle">${label}</text></g>`;
+  }));
+  let hS=''; COLS.forEach((c,ci)=>{ hS+=`<text class="ghead" x="${COLX[ci]}" y="22" text-anchor="middle">${c.t.toUpperCase()}</text>`; });
+
+  host.innerHTML=`<svg id="depsvg" viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMin meet" role="img" aria-label="Connection graph — what talks to what">
+    <defs>
+      <marker id="aOne" markerWidth="9" markerHeight="8" refX="7" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3 L0,6 Z" fill="${ECOLOR.one}"/></marker>
+      <marker id="aMan" markerWidth="9" markerHeight="8" refX="7" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3 L0,6 Z" fill="${ECOLOR.man}"/></marker>
+      <marker id="aTwo" markerWidth="9" markerHeight="8" refX="7" refY="3" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3 L0,6 Z" fill="${ECOLOR.two}"/></marker>
+    </defs>
+    <g>${hS}</g><g id="gedges">${eS}</g><g>${lS}</g><g id="gnodes">${nS}</g>
+  </svg>`;
+
+  const svg=document.getElementById('depsvg');
+  const adj={}; EDGES.forEach(([a,b])=>{(adj[a]=adj[a]||new Set()).add(b);(adj[b]=adj[b]||new Set()).add(a);});
+  let pinned=null;
+  function placeLabel(t,fid){
+    const other=(t.dataset.a===fid)?t.dataset.b:t.dataset.a;
+    const O=pos[other],F=pos[fid]; if(!O||!F) return;
+    const OFF=9; let x,anchor;
+    if(F.x<O.x){ x=O.x-O.w/2-OFF; anchor='end'; }
+    else { x=O.x+O.w/2+OFF; anchor='start'; }
+    t.setAttribute('x',x); t.setAttribute('y',O.y+3); t.setAttribute('text-anchor',anchor);
+  }
+  function focus(id){
+    svg.classList.toggle('focusing',!!id);
+    svg.querySelectorAll('.gnode').forEach(g=>{const n=g.dataset.id;
+      g.classList.toggle('hot',!!id&&(n===id||(adj[id]&&adj[id].has(n))));});
+    svg.querySelectorAll('.gedge').forEach(p=>p.classList.toggle('active',!!id&&(p.dataset.a===id||p.dataset.b===id)));
+    svg.querySelectorAll('.elabel').forEach(t=>{
+      const on=!!id&&(t.dataset.a===id||t.dataset.b===id);
+      if(on) placeLabel(t,id);
+      t.classList.toggle('show',on);
+    });
+  }
+  svg.querySelectorAll('.gnode').forEach(g=>{const id=g.dataset.id;
+    g.addEventListener('pointerenter',()=>{if(!pinned)focus(id);});
+    g.addEventListener('pointerleave',()=>{if(!pinned)focus(null);});
+    g.addEventListener('focus',()=>{if(!pinned)focus(id);});
+    g.addEventListener('click',e=>{e.stopPropagation();pinned=pinned===id?null:id;focus(pinned);});
+    g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pinned=pinned===id?null:id;focus(pinned);}});
+  });
+  svg.addEventListener('click',()=>{pinned=null;focus(null);});
+}
+
+document.getElementById('addBtn').onclick=()=>{
+  const name=prompt("Service name?"); if(!name) return;
+  const id=name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||('svc'+Date.now());
+  if(data.some(s=>s.id===id)){alert('Already on the board.');return;}
+  data.push({id,name,cat:"Infra",fn:"(describe what this does)",status:"trial",spend:0,tier:"",deps:[],url:"#"});
+  save();
+};
+
+const resetEl=document.getElementById('resetBtn');
+if(resetEl) resetEl.onclick=async(e)=>{
+  e.preventDefault();
+  if(!confirm('Reset the board to the latest version? This clears local edits (spend/status) on THIS device only.')) return;
+  try{ await window.storage.delete(KEY); }catch(err){}
+  data = structuredClone(SEED);
+  save(); renderGraph();
+};
+
+// ---- AI scan via Claude in the artifact ----
+document.getElementById('scanBtn').onclick=runScan;
+async function runScan(){
+  const btn=document.getElementById('scanBtn');
+  const lbl=document.getElementById('scanLabel');
+  const out=document.getElementById('scanResult');
+  btn.disabled=true; lbl.innerHTML=`<span class="spinner"></span> Scanning…`;
+  out.className="scanout"; out.innerHTML=`<p style="color:#9DB0CC">Reading the board and checking current pricing…</p>`;
+
+  const snapshot = data.map(s=>({
+    name:s.name, category:s.cat, status:s.status,
+    monthly_usd:+s.spend||0, plan:s.tier, function:s.fn,
+    depends_on:s.deps.map(nameOf)
+  }));
+  const monthly = data.filter(isOn).reduce((a,s)=>a+(+s.spend||0),0);
+
+  const prompt =
+`You are a pragmatic technical-ops advisor reviewing a solo operator's software stack.
+The operator runs a Next.js/Supabase app plus a geopolitics research/publishing brand. Be concrete and frugal, not enterprise-y.
+
+Current stack (JSON):
+${JSON.stringify(snapshot,null,2)}
+
+Reported active spend: $${monthly}/month.
+
+If useful, use web search to confirm 2025/2026 pricing and free-tier limits for any of these tools.
+
+Return PLAIN TEXT using ONLY these section headers, each on its own line starting with "## ":
+## Redundancies & consolidation
+## Spend optimization
+## Gaps or risks
+## Suggested next 2 moves
+Under each header use short "- " bullets. No preamble, no closing summary. Reference tools by name. Keep the whole thing under ~280 words. Flag clearly that these are suggestions only.`;
+
+  try{
+    const res = await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        model:"claude-sonnet-4-6", max_tokens:1000,
+        messages:[{role:"user",content:prompt}],
+        tools:[{type:"web_search_20250305",name:"web_search"}]
+      })
+    });
+    if(!res.ok) throw new Error("API returned "+res.status);
+    const d = await res.json();
+    const text = (d.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n").trim();
+    if(!text) throw new Error("Empty response");
+    out.innerHTML = mdToHtml(text);
+  }catch(err){
+    out.className="scanout";
+    out.innerHTML=`<div class="err"><strong>Scan didn't complete.</strong> ${String(err.message||err)}.<br>
+      You can retry — and the manual breakdown in the chat still covers the main consolidation calls (PostHog↔Vercel analytics, Cloudflare↔Vercel edge).</div>`;
+  }finally{
+    btn.disabled=false; lbl.innerHTML=`⚡ Re-run AI scan`;
+  }
+}
+
+// tiny, safe markdown → html (headers, bullets, bold) with escaping
+function esc(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function mdToHtml(t){
+  const lines=t.split('\n'); let html='', inUl=false;
+  const closeUl=()=>{if(inUl){html+='</ul>';inUl=false;}};
+  for(let raw of lines){
+    const line=raw.trim();
+    if(!line){closeUl();continue;}
+    if(line.startsWith('## ')){closeUl();html+='<h3>'+inline(line.slice(3))+'</h3>';continue;}
+    if(line.startsWith('- ')||line.startsWith('* ')){
+      if(!inUl){html+='<ul>';inUl=true;} html+='<li>'+inline(line.slice(2))+'</li>';continue;}
+    closeUl(); html+='<p>'+inline(line)+'</p>';
+  }
+  closeUl(); return html;
+}
+function inline(s){return esc(s).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');}
+
+// ---- tab switching ----
+(function initTabs(){
+  const tabs=[...document.querySelectorAll('.tab')];
+  const panels=[...document.querySelectorAll('.panel')];
+  function show(name){
+    tabs.forEach(t=>t.setAttribute('aria-selected', String(t.dataset.tab===name)));
+    panels.forEach(p=>p.hidden = p.dataset.panel!==name);
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+  tabs.forEach(t=>t.addEventListener('click',()=>show(t.dataset.tab)));
+})();
+
+(async()=>{ await load(); render(); renderGraph(); })();
+</script>
