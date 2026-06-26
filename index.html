@@ -116,6 +116,9 @@
     font:800 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.11em;text-transform:uppercase;
     padding:6px 11px;border-radius:999px;border:1px solid transparent}
   .conn-badge .cdot{width:8px;height:8px;border-radius:50%;flex:none}
+  .conn-badge.actionable{cursor:pointer;text-decoration:none;transition:filter .12s,box-shadow .12s}
+  .conn-badge.actionable:hover{filter:brightness(.96);box-shadow:0 1px 6px rgba(0,0,0,.12);text-decoration:none}
+  .conn-badge .cgo{margin-left:1px;font-weight:800;opacity:.92}
   .conn-badge.conn-ok{color:#12693f;background:#d7f0e3;border-color:#8fd2b4}
   .conn-badge.conn-ok .cdot{background:#1a8a4a;box-shadow:0 0 0 3px rgba(26,138,74,.22)}
   .conn-badge.conn-auth{color:#8a5300;background:#fbe6bb;border-color:#e6c07a}
@@ -614,7 +617,34 @@ const CONN_META = {
   na:         {cls:'conn-na',   ic:'–', label:'Claude: n/a',         short:'N/A'}
 };
 const connOf = id => CONN[id] || 'none';
-function connBadge(id){ const m=CONN_META[connOf(id)]; return `<div class="conn-badge ${m.cls}" title="${m.label}"><span class="cdot"></span>${m.short}</div>`; }
+// where to go to authorize / set up each not-yet-usable service
+const CONNECT_URL = {
+  // needs_auth — authorize the connector / integration
+  github:'https://github.com/settings/installations',
+  slack:'https://slack.com/apps/manage',
+  ci:'https://github.com/ChokePointMacro/Stack/actions',
+  // none — open the service console to sign in / grab an API key
+  alpaca:'https://app.alpaca.markets',
+  polygon:'https://polygon.io/dashboard/keys',
+  tradingview:'https://www.tradingview.com/chart/',
+  betterstack:'https://betterstack.com/users/sign-in',
+  upstash:'https://console.upstash.com',
+  pinecone:'https://app.pinecone.io',
+  wave:'https://my.waveapps.com',
+  substack:'https://substack.com/sign-in',
+  calendly:'https://calendly.com/app',
+  instagram:'https://www.instagram.com',
+  x:'https://x.com'
+};
+function connBadge(id){
+  const k=connOf(id), m=CONN_META[k];
+  if(k==='needs_auth'||k==='none'){
+    const href=CONNECT_URL[id]||(data.find(s=>s.id===id)||{}).url||'#';
+    const cta=k==='needs_auth'?'Connect':'Set up';
+    return `<a class="conn-badge ${m.cls} actionable" href="${href}" target="_blank" rel="noopener" title="${m.label} — ${cta} ↗"><span class="cdot"></span>${m.short}<span class="cgo">· ${cta} ↗</span></a>`;
+  }
+  return `<div class="conn-badge ${m.cls}" title="${m.label}"><span class="cdot"></span>${m.short}</div>`;
+}
 // dynamic spend color — heavier monthly burn = hotter
 function spendColor(v){ v=+v||0;
   if(v<=0)  return '#b6b0a4';   // none — muted
