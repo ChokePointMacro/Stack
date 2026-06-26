@@ -111,16 +111,35 @@
   .sec-head .rule{flex:1;height:1px;background:var(--line)}
   .sec-head .num{font:700 11px 'JetBrains Mono',monospace;color:var(--rust-bright)}
 
-  /* Claude connection status */
-  .conn-badge{margin-top:9px;font:600 10.5px 'JetBrains Mono',monospace;letter-spacing:.03em;
-    display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:6px;border:1px solid transparent}
-  .conn-ok{color:#BFE9D6;background:rgba(63,157,124,.16);border-color:rgba(63,157,124,.42)}
-  .conn-auth{color:#F3D79A;background:rgba(201,145,47,.16);border-color:rgba(201,145,47,.48)}
-  .conn-none{color:#9DB0CC;background:rgba(124,138,160,.12);border-color:rgba(124,138,160,.3)}
-  .conn-na{color:#8595AE;background:rgba(124,138,160,.08);border-color:rgba(124,138,160,.22)}
+  /* Claude connection status — card badges (high-contrast, on light cards) */
+  .conn-badge{margin-top:2px;width:fit-content;display:inline-flex;align-items:center;gap:7px;
+    font:800 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.11em;text-transform:uppercase;
+    padding:6px 11px;border-radius:999px;border:1px solid transparent}
+  .conn-badge .cdot{width:8px;height:8px;border-radius:50%;flex:none}
+  .conn-badge.conn-ok{color:#12693f;background:#d7f0e3;border-color:#8fd2b4}
+  .conn-badge.conn-ok .cdot{background:#1a8a4a;box-shadow:0 0 0 3px rgba(26,138,74,.22)}
+  .conn-badge.conn-auth{color:#8a5300;background:#fbe6bb;border-color:#e6c07a}
+  .conn-badge.conn-auth .cdot{background:#e0a400;box-shadow:0 0 0 3px rgba(224,164,0,.24)}
+  .conn-badge.conn-none{color:#5b6675;background:#e9ecef;border-color:#cfd5db}
+  .conn-badge.conn-none .cdot{background:#9aa6b3}
+  .conn-badge.conn-na{color:#86867e;background:#eeeee8;border-color:#deded6}
+  .conn-badge.conn-na .cdot{background:#b6b6ad}
+  /* card top-accent + tint by connection state — scannable at a glance */
+  .card.cs-connected{border-top-color:#1a8a4a}
+  .card.cs-needs_auth{border-top-color:#e0a400;background:#fffaef}
+  .card.cs-none{border-top-color:#aab4c0}
+  .card.cs-na{border-top-color:#d3d6dc}
+  /* Claude access legend bar (light text — sits on the dark panel) */
   .connbar{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin:0 0 16px}
   .connbar .cb-title{font:700 10px 'JetBrains Mono',monospace;letter-spacing:.22em;text-transform:uppercase;color:#9DB0CC}
   .connbar .cb{font:600 11px 'JetBrains Mono',monospace;padding:4px 10px;border-radius:999px;border:1px solid transparent}
+  .connbar .cb.conn-ok{color:#BFE9D6;background:rgba(63,157,124,.16);border-color:rgba(63,157,124,.42)}
+  .connbar .cb.conn-auth{color:#F3D79A;background:rgba(201,145,47,.16);border-color:rgba(201,145,47,.48)}
+  .connbar .cb.conn-none{color:#9DB0CC;background:rgba(124,138,160,.12);border-color:rgba(124,138,160,.3)}
+  .connbar .cb.conn-na{color:#8595AE;background:rgba(124,138,160,.08);border-color:rgba(124,138,160,.22)}
+  .spendbar{display:flex;flex-wrap:wrap;align-items:center;gap:13px;margin:-8px 0 16px}
+  .spendbar .sb-title{font:700 10px 'JetBrains Mono',monospace;letter-spacing:.22em;text-transform:uppercase;color:#9DB0CC}
+  .spendbar .sb{font:700 11px 'JetBrains Mono',monospace;display:inline-flex;align-items:center;gap:5px}
   .prep-grid{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 14px}
   .prep-chip{font:600 12px 'JetBrains Mono',monospace;padding:5px 11px;border-radius:7px;border:1px solid transparent}
   .prep-chip.ok{color:#BFE9D6;background:rgba(63,157,124,.14);border-color:rgba(63,157,124,.4)}
@@ -300,6 +319,7 @@
   </div>
 
   <div class="connbar" id="connbar"></div>
+  <div class="spendbar"><span class="sb-title">Monthly burn</span><span class="sb" style="color:#13315C">● under $10</span><span class="sb" style="color:#C9912F">● $10–24</span><span class="sb" style="color:#C04A28">● $25–49</span><span class="sb" style="color:#A31D12">● $50+</span></div>
   <div class="grid" id="grid"></div>
 
   <div class="sec-head"><span class="num">01</span><h2>Dependency map · by layer</h2><span class="rule"></span></div>
@@ -588,13 +608,21 @@ const CONN = {
   claude:'na', claudedesign:'na'
 };
 const CONN_META = {
-  connected:  {cls:'conn-ok',   ic:'●', label:'Claude: connected'},
-  needs_auth: {cls:'conn-auth', ic:'▲', label:'Claude: needs auth'},
-  none:       {cls:'conn-none', ic:'○', label:'No Claude connector'},
-  na:         {cls:'conn-na',   ic:'–', label:'Claude: n/a'}
+  connected:  {cls:'conn-ok',   ic:'●', label:'Claude: connected',  short:'Connected'},
+  needs_auth: {cls:'conn-auth', ic:'▲', label:'Claude: needs auth',  short:'Needs auth'},
+  none:       {cls:'conn-none', ic:'○', label:'No Claude connector', short:'No connector'},
+  na:         {cls:'conn-na',   ic:'–', label:'Claude: n/a',         short:'N/A'}
 };
 const connOf = id => CONN[id] || 'none';
-function connBadge(id){ const m=CONN_META[connOf(id)]; return `<div class="conn-badge ${m.cls}" title="${m.label}">${m.ic} ${m.label}</div>`; }
+function connBadge(id){ const m=CONN_META[connOf(id)]; return `<div class="conn-badge ${m.cls}" title="${m.label}"><span class="cdot"></span>${m.short}</div>`; }
+// dynamic spend color — heavier monthly burn = hotter
+function spendColor(v){ v=+v||0;
+  if(v<=0)  return '#b6b0a4';   // none — muted
+  if(v<10)  return '#13315C';   // low — navy
+  if(v<25)  return '#C9912F';   // moderate — amber
+  if(v<50)  return '#C04A28';   // high — rust
+  return '#A31D12';             // heavy — red
+}
 function renderConn(){
   const counts={connected:0,needs_auth:0,none:0,na:0};
   data.forEach(s=>{ const k=connOf(s.id); counts[k]=(counts[k]||0)+1; });
@@ -674,10 +702,11 @@ function render(){
   const shown = data.filter(s=>filter==="All"||s.cat===filter);
   grid.innerHTML = shown.map(s=>{
     const [dc,dl]=statusMeta(s.status);
+    const sc=spendColor(s.spend);
     const deps = s.deps.length
       ? `<div class="deps"><b>needs</b> ${s.deps.map(d=>`<span class="dep-pill">${nameOf(d)}</span>`).join("")}</div>`
       : `<div class="deps"><b>standalone</b> — nothing else depends on it to run</div>`;
-    return `<div class="card ${isOn(s)?'':'off'}" data-id="${s.id}">
+    return `<div class="card cs-${connOf(s.id)} ${isOn(s)?'':'off'}" data-id="${s.id}">
       <button class="del" title="Remove" data-del="${s.id}">×</button>
       <div class="card-h"><div>
         <div class="svc-name">${s.name}</div>
@@ -686,7 +715,7 @@ function render(){
       <div class="fn">${s.fn}</div>
       <div class="row between">
         <button class="status" data-st="${s.id}"><span class="dot ${dc}"></span>${dl}</button>
-        <div class="spend-wrap"><span class="cur">$</span><input class="spend" type="number" min="0" step="1" value="${s.spend}" data-sp="${s.id}"><span class="per">/mo</span></div>
+        <div class="spend-wrap"><span class="cur" style="color:${sc}">$</span><input class="spend" type="number" min="0" step="1" value="${s.spend}" style="color:${sc};border-bottom-color:${sc}" data-sp="${s.id}"><span class="per">/mo</span></div>
       </div>
       ${connBadge(s.id)}
       <input class="tier" value="${s.tier||''}" data-tier="${s.id}" aria-label="plan tier for ${s.name}">
